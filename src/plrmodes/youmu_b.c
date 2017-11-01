@@ -86,6 +86,7 @@ static int youmu_homing(Projectile *p, int t) { // a[0]: velocity, a[1]: aim (r:
 static int youmu_trap(Projectile *p, int t) {
     if(t == EVENT_DEATH) {
         create_particle1c("blast", p->pos, 0, Blast, timeout, 15);
+        create_particle1c("blast", p->pos, 0, Blast, timeout, 20);
         return 1;
     }
 
@@ -95,29 +96,13 @@ static int youmu_trap(Projectile *p, int t) {
         return ACTION_DESTROY;
     }
 
-    if(!(global.plr.inputflags & INFLAG_FOCUS)) {
-        create_particle1c("blast", p->pos, 0, Blast, timeout, 20);
-        create_particle1c("blast", p->pos, 0, Blast, timeout, 23);
-
-        int cnt = creal(p->args[2]);
-        int dmg = cimag(p->args[2]);
-        int dur = 45 + 10 * nfrand(); // creal(p->args[3]) + nfrand() * cimag(p->args[3]);
-        complex aim = p->args[3];
-
-        for(int i = 0; i < cnt; ++i) {
-            float a = (i / (float)cnt) * M_PI * 2;
-            complex dir = cexp(I*(a));
-            Projectile *proj = create_projectile4c("hghost", p->pos, 0, youmu_homing, 5 * dir, aim, dur, global.plr.pos);
-            proj->type = PlrProj + dmg;
-            proj->draw = youmu_homing_draw_proj;
-        }
-
-        return ACTION_DESTROY;
+    if(!(global.plr.inputflags & INFLAG_SHOT)) {
+        create_particle1c("blast", p->pos, 0, Blast, timeout, 12);
+        p->args[0] -= (global.plr.pos - p->pos) * 0.5;
     }
 
     p->angle = global.frames + t;
     p->pos += p->args[0] * (0.01 + 0.99 * max(0, (10 - t) / 10.0));
-
     youmu_homing_trail(p, cexp(I*p->angle), 30);
     return 1;
 }
@@ -199,16 +184,13 @@ static void youmu_haunting_shot(Player *plr) {
         if(plr->inputflags & INFLAG_FOCUS) {
             int pwr = plr->power / 100;
 
-            if(!(global.frames % (45 - 4 * pwr))) {
-                int pcnt = 11 + pwr * 4;
-                int pdmg = 120 - 18 * 4 * (1 - pow(1 - pwr / 4.0, 1.5));
-                complex aim = 0.75;
-
-                create_projectile4c("youhoming", plr->pos, 0, youmu_trap, -30.0*I, 120, pcnt+pdmg*I, aim)->type = PlrProj+1000;
+            if(!(global.frames % (22 - 2 * pwr))) {
+                complex dir = -I;
+                create_projectile2c("youhoming", plr->pos, 0, youmu_trap, 20.0*dir, 240)->type = PlrProj+500;
             }
         } else {
             if(!(global.frames % 6)) {
-                create_projectile4c("hghost", plr->pos, 0, youmu_homing, -10.0*I, 0.25 + 0.1*I, 60, VIEWPORT_W*0.5)->type = PlrProj+120;
+                create_projectile4c("hghost", plr->pos, 0, youmu_homing, -10.0*I, 0.25 + 0.1*I, 60, VIEWPORT_W*0.5)->type = PlrProj+102;
             }
 
             for(int p = 1; p <= PLR_MAX_POWER/100; ++p) {
