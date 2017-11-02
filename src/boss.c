@@ -115,8 +115,22 @@ static bool boss_should_skip_attack(Boss *boss, Attack *a) {
 	//
 	// (for example, the "Generic move" that might have been automatically added by
 	// boss_add_attack_from_info. this is what the a->info->type check is for.)
+	if(boss->failed_spells && (a->type == AT_ExtraSpell || (a->info && a->info->type == AT_ExtraSpell))) {
+		return true;
+	}
 
-	return boss->failed_spells && (a->type == AT_ExtraSpell || (a->info && a->info->type == AT_ExtraSpell));
+	// Immediates are handled in a special way by process_boss,
+	// but may be considered skipped/nonexistent for other purposes
+	if(a->type == AT_Immediate) {
+		return true;
+	}
+
+	// Skip zero-length spells. Zero-length AT_Move and AT_Normal attacks are ok.
+	if(ATTACK_IS_SPELL(a->type) && a->timeout <= 0) {
+		return true;
+	}
+
+	return false;
 }
 
 static Attack* boss_get_final_attack(Boss *boss) {
@@ -287,17 +301,16 @@ void draw_boss(Boss *boss) {
 			if(boss_should_skip_attack(boss,&boss->attacks[nextspell]))
 				continue;
 			int t = boss->attacks[nextspell].type;
-			if(!attack_is_over(&boss->attacks[nextspell]) && t == AT_Spellcard)
+			if(ATTACK_IS_SPELL(t) && !attack_is_over(&boss->attacks[nextspell]))
 				break;
 		}
-
 
 		for(prevspell = nextspell; prevspell > 0; prevspell--) {
 			if(boss_should_skip_attack(boss,&boss->attacks[prevspell]))
 				continue;
 
 			int t = boss->attacks[prevspell].type;
-			if(attack_is_over(&boss->attacks[prevspell]) && t == AT_Spellcard)
+			if(ATTACK_IS_SPELL(t) && attack_is_over(&boss->attacks[prevspell]))
 				break;
 			maxhpspan += boss->attacks[prevspell].maxhp;
 			hpspan += boss->attacks[prevspell].hp;
@@ -340,9 +353,15 @@ void draw_boss(Boss *boss) {
 		glColor4f(1,1,1,0.7);
 
 		int x = 0;
-		for(int i = boss->acount-1; i > nextspell; i--)
-			if(boss->attacks[i].type == AT_Spellcard)
+		for(int i = boss->acount-1; i > nextspell; i--) {
+			if(
+				ATTACK_IS_SPELL(boss->attacks[i].type) &&
+				(boss->attacks[i].type != AT_ExtraSpell) &&
+				!boss_should_skip_attack(boss, &boss->attacks[i])
+			) {
 				draw_texture(x += 22, 40, "star");
+			}
+		}
 
 		glColor3f(1,1,1);
 	}
@@ -661,6 +680,12 @@ void process_boss(Boss **pboss) {
 				boss->current = NULL;
 				boss_death(pboss);
 				break;
+			}
+
+			if(boss->current->type == AT_Immediate) {
+				boss->current->starttime = global.frames;
+				boss->current->rule(boss, EVENT_BIRTH);
+				continue;
 			}
 
 			if(boss_should_skip_attack(boss, boss->current)) {

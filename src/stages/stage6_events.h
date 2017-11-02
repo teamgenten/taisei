@@ -30,3 +30,8 @@ Boss* stage6_spawn_elly(complex pos);
 
 void Scythe(Enemy *e, int t);
 void scythe_common(Enemy *e, int t);
+
+// Baryon synchronized to appear exactly at 9000th frame since the first attack
+// In practice it may take longer, if the player isn't fast enough
+#define STAGE6_SCYTHEPHASE_FILLER1_TIME 4500
+#define STAGE6_SCYTHEPHASE_FILLER2_TIME 8819

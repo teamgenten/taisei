@@ -22,7 +22,7 @@ struct stage6_spells_s stage6_spells = {
 	.scythe = {
 		.occams_razor				= {{ 0,  1,  2,  3}, AT_Spellcard, "Newton Sign ~ Occam’s razor", 50, 60000,
 										elly_newton, elly_spellbg_classic, BOSS_DEFAULT_GO_POS},
-		.orbital_clockwork			= {{24, 25, 26, 27}, AT_Spellcard, "Kepler Sign ~ Orbital Clockwork", 45, 60000,
+		.orbital_clockwork			= {{24, 25, 26, 27}, AT_SurvivalSpell, "Kepler Sign ~ Orbital Clockwork", 20, 60000,
 										elly_kepler, elly_spellbg_classic, BOSS_DEFAULT_GO_POS},
 		.wave_theory				= {{ 4,  5,  6,  7}, AT_Spellcard, "Maxwell Sign ~ Wave Theory", 25, 30000,
 										elly_maxwell, elly_spellbg_classic, BOSS_DEFAULT_GO_POS},
@@ -273,6 +273,11 @@ void stage6_end(void) {
 
 void elly_intro(Boss*, int);
 void elly_unbound(Boss*, int);
+
+void stage6_skip(int t) {
+	skip_background_anim(&bgcontext, stage6_draw, t, &global.timer, &global.frames);
+	audio_backend_music_set_position(global.timer / (double)FPS);
+}
 
 void stage6_spellpractice_events(void) {
 	TIMER(&global.timer);

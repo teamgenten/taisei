@@ -479,6 +479,40 @@ void elly_frequency2(Boss *b, int t) {
 	}
 }
 
+int elly_frequency3_proj(Projectile *p, int t) {
+	if(t == creal(p->args[2])) {
+		int cnt = 3;
+
+		for(int i = 0; i < cnt; ++i) {
+			complex dir = cexp(I*(M_PI*2.0*i/cnt+p->angle));
+			create_projectile2c("flea", p->pos, rgb(0.2, 0.2, 1.0), asymptotic, dir, 3);
+		}
+
+		return ACTION_DESTROY;
+	}
+
+	return asymptotic(p, t);
+}
+
+void elly_frequency3(Boss *b, int t) {
+	TIMER(&t);
+	AT(0) {
+		global.enemies->birthtime = global.frames;
+		global.enemies->logic_rule = scythe_infinity;
+		global.enemies->args[0] = -4;
+	}
+	AT(EVENT_DEATH) {
+		global.enemies->birthtime = global.frames;
+		global.enemies->logic_rule = scythe_reset;
+		global.enemies->args[0] = 0;
+	}
+
+	FROM_TO(0, 2000, 3-global.diff/2) {
+		complex n = sin(t*0.12*global.diff)*cexp(t*0.02*I*global.diff);
+		create_projectile3c("plainball", b->pos+80*n, rgb(0,0,0.7), elly_frequency3_proj, 2*n/cabs(n), 3, 60);
+	}
+}
+
 complex maxwell_laser(Laser *l, float t) {
 	if(t == EVENT_BIRTH) {
 		l->unclearable = true;
@@ -663,6 +697,8 @@ void elly_unbound(Boss *b, int t) {
 		first->args[1] = add_ref(last);
 
 		create_enemy2c(b->pos, ENEMY_IMMUNE, BaryonCenter, baryon_center, 0, add_ref(first) + I*add_ref(middle));
+
+		log_debug("Baryon created at: %i", global.frames - (b->attacks+1)->starttime);
 	}
 
 	if(t > 120)
@@ -1570,6 +1606,33 @@ static void elly_insert_interboss_dialog(Boss *b, int t) {
 	}
 }
 
+static void elly_set_filler_timeout_common(Boss *b, int t, int mintime) {
+	int timeout = (t - (global.frames - b->attacks[1].starttime + ATTACK_START_DELAY));
+	log_debug("Filler timeout: %i frames (~= %.02f seconds)", timeout, timeout/(double)FPS);
+
+	Attack *a = b->current + 1;
+	int old_timeout = a->timeout;
+	timeout = max(mintime, timeout);
+
+	if(timeout < old_timeout) {
+		a->failtime = global.frames;
+	}
+
+	a->timeout = timeout;
+}
+
+static void elly_set_filler1_timeout(Boss *b, int t) {
+	elly_set_filler_timeout_common(b, STAGE6_SCYTHEPHASE_FILLER1_TIME, 20*60);
+}
+
+static void elly_set_filler2_timeout(Boss *b, int t) {
+	elly_set_filler_timeout_common(b, STAGE6_SCYTHEPHASE_FILLER2_TIME, 20*60);
+}
+
+static void elly_filler(Boss *b, int t) {
+
+}
+
 Boss* create_elly(void) {
 	Boss *b = stage6_spawn_elly(-200.0*I);
 
@@ -1577,8 +1640,12 @@ Boss* create_elly(void) {
 	boss_add_attack(b, AT_Normal, "Frequency", 40, 50000, elly_frequency, NULL);
 	boss_add_attack_from_info(b, &stage6_spells.scythe.occams_razor, false);
 	boss_add_attack(b, AT_Normal, "Frequency2", 40, 50000, elly_frequency2, NULL);
+	boss_add_attack(b, AT_Immediate, "", 0, 50000, elly_set_filler1_timeout, NULL);
 	boss_add_attack_from_info(b, &stage6_spells.scythe.orbital_clockwork, false);
+	boss_add_attack(b, AT_Normal, "Frequency3", 40, 50000, elly_frequency3, NULL);
 	boss_add_attack_from_info(b, &stage6_spells.scythe.wave_theory, false);
+	boss_add_attack(b, AT_Immediate, "", 0, 50000, elly_set_filler2_timeout, NULL);
+	boss_add_attack(b, AT_SurvivalSpell, "Filler", 0, 50000, elly_filler, elly_spellbg_classic);
 	boss_add_attack(b, AT_Move, "Unbound", 3, 10, elly_unbound, NULL);
 	boss_add_attack_from_info(b, &stage6_spells.baryon.many_world_interpretation, false);
 	boss_add_attack(b, AT_Normal, "Baryon", 40, 50000, elly_baryonattack, NULL);
@@ -1595,11 +1662,14 @@ Boss* create_elly(void) {
 	return b;
 }
 
+void stage6_skip(int t);
+
 void stage6_events(void) {
 	TIMER(&global.timer);
 
 	AT(0) {
 		stage_start_bgm("stage6");
+		stage6_skip(getenvint("STAGE6_TEST", 0));
 	}
 
 	AT(100)
