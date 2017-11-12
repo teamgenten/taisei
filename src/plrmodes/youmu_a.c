@@ -202,6 +202,7 @@ PlayerMode plrmode_youmu_a = {
     .shot_mode = PLR_SHOT_YOUMU_MIRROR,
     .procs = {
         .bomb = youmu_mirror_bomb,
+	.bombbg = youmu_common_bombbg,
         .shot = youmu_common_shot,
         .init = youmu_mirror_init,
         .preload = youmu_mirror_preload,

@@ -84,3 +84,18 @@ void youmu_common_shot(Player *plr) {
         );
     }
 }
+
+void youmu_common_bombbg(Player *plr) {
+	float t = player_get_bomb_progress(&global.plr, NULL);
+	float fade = 1;
+
+	if(t < BOMB_RECOVERY/6)
+		fade = t/BOMB_RECOVERY*6;
+
+	if(t > BOMB_RECOVERY/4*3)
+		fade = 1-t/BOMB_RECOVERY*4 + 3;
+
+	glColor4f(1,1,1,0.6*fade);
+	fill_screen(0,-t*0.01,1,"marisa_bombbg");
+	glColor4f(1,1,1,1);
+}

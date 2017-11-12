@@ -145,6 +145,21 @@ static void marisa_star_bomb(Player *plr) {
     }
 }
 
+static void marisa_star_bombbg(Player *plr) {
+	float t = player_get_bomb_progress(&global.plr, NULL);
+	float fade = 1;
+
+	if(t < BOMB_RECOVERY/6)
+		fade = t/BOMB_RECOVERY*6;
+
+	if(t > BOMB_RECOVERY/4*3)
+		fade = 1-t/BOMB_RECOVERY*4 + 3;
+
+	glColor4f(1,1,1,0.6*fade);
+	fill_screen(0,-t*0.01,1,"marisa_bombbg");
+	glColor4f(1,1,1,1);
+}
+
 static void marisa_star_respawn_slaves(Player *plr, short npow) {
     Enemy *e = plr->slaves, *tmp;
     double dmg = 5;
@@ -207,6 +222,7 @@ PlayerMode plrmode_marisa_b = {
     .shot_mode = PLR_SHOT_MARISA_STAR,
     .procs = {
         .bomb = marisa_star_bomb,
+	.bombbg = marisa_star_bombbg,
         .shot = marisa_common_shot,
         .power = marisa_star_power,
         .preload = marisa_star_preload,

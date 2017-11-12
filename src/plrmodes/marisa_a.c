@@ -281,61 +281,33 @@ static int marisa_laser_slave(Enemy *e, int t) {
     return 1;
 }
 
-static void masterspark_ring_draw(complex base, int t, float fade) {
-    glPushMatrix();
-
-    if(t < 1) {
-        // prevent division by zero
-        t = 1;
-    }
-
-    glTranslatef(creal(base), cimag(base)-t*t*0.4, 0);
-
-    float f = sqrt(t/500.0)*1200;
-
-    glColor4f(1,1,1,fade*20.0/t);
-
-    Texture *tex = get_tex("masterspark_ring");
-    glScalef(f/tex->w, 1-tex->h/f,0);
-    draw_texture_p(0,0,tex);
-
-    glPopMatrix();
-}
-
 static void masterspark_visual(Enemy *e, int t, bool render) {
     if(!render) {
         return;
     }
 
     t = player_get_bomb_progress(&global.plr, NULL) * (e->args[0] / BOMB_RECOVERY);
+    float fade = 1;
 
-    glPushMatrix();
-
-    float angle = 9 - t/e->args[0]*6.0, fade = 1;
-
-    if(t < creal(e->args[0]/6))
+    if(t < creal(e->args[0]/6)) {
         fade = t/e->args[0]*6;
+	fade = sqrt(fade);
+    }
 
-    if(t > creal(e->args[0])/4*3)
+    if(t > creal(e->args[0])/4*3) {
         fade = 1-t/e->args[0]*4 + 3;
+	fade *= fade;
+    }
 
-    glColor4f(1,0.85,1,fade);
-    glTranslatef(creal(global.plr.pos), cimag(global.plr.pos), 0);
-    glRotatef(-angle,0,0,1);
-    draw_texture(0, -450, "masterspark");
-    glColor4f(0.85,1,1,fade);
-    glRotatef(angle*2,0,0,1);
-    draw_texture(0, -450, "masterspark");
-    glColor4f(1,1,1,fade);
-    glRotatef(-angle,0,0,1);
-    draw_texture(0, -450, "masterspark");
+    Shader *mshader = get_shader("masterspark");
+    glUseProgram(mshader->prog);
+    glUniform1f(uniloc(mshader,"t"),t);
+    glPushMatrix();
+    glTranslatef(creal(global.plr.pos),cimag(global.plr.pos)-40-VIEWPORT_H/2,0);
+    glScalef(fade*400,VIEWPORT_H,1);
+    draw_quad();
     glPopMatrix();
-
-//  glColor4f(0.9,1,1,fade*0.8);
-    for(int i = 0; i < 8; i++)
-        masterspark_ring_draw(global.plr.pos - 50.0*I, t%20 + 10*i, fade);
-
-    glColor4f(1,1,1,1);
+    glUseProgram(0);
 }
 
 static int masterspark(Enemy *e, int t) {
@@ -344,14 +316,35 @@ static int masterspark(Enemy *e, int t) {
         return 1;
     }
 
-    t = player_get_bomb_progress(&global.plr, NULL) * (e->args[0] / BOMB_RECOVERY);
+    t = player_get_bomb_progress(&global.plr, NULL);
+    if(t%2==0 && t < BOMB_RECOVERY*3/4) {
+	    complex dir = -cexp(M_PI*I*frand());
+	    Color c = rgb(0.7+0.3*sin(t*0.1),0.7+0.3*cos(t*0.1),0.7+0.3*cos(t*0.01));
+	    PARTICLE("maristar_orbit",global.plr.pos+40*dir,c,timeout_linear,{50, 10*dir-10*I,3},nfrand(),PFLAG_DRAWADD,GrowFade);
+	    PARTICLE("smoke",global.plr.pos-40*I,rgb(0.9,1,1),timeout_linear,{50, -5*dir,3},nfrand(),PFLAG_DRAWADD,GrowFade);
+    }
 
-    if(t >= creal(e->args[0]) || global.frames - global.plr.recovery > 0) {
+    if(t >= BOMB_RECOVERY || global.frames - global.plr.recovery > 0) {
         global.shake_view = 0;
         return ACTION_DESTROY;
     }
 
     return 1;
+}
+
+static void marisa_laser_bombbg(Player *plr) {
+	float t = player_get_bomb_progress(&global.plr, NULL);
+	float fade = 1;
+
+	if(t < BOMB_RECOVERY/6)
+		fade = t/BOMB_RECOVERY*6;
+
+	if(t > BOMB_RECOVERY/4*3)
+		fade = 1-t/BOMB_RECOVERY*4 + 3;
+
+	glColor4f(1,1,1,0.8*fade);
+	fill_screen(sin(t*0.001),t*0.01*(1+t*0.01),1,"marisa_bombbg");
+	glColor4f(1,1,1,1);
 }
 
 static void marisa_laser_bomb(Player *plr) {
@@ -451,6 +444,7 @@ static void marisa_laser_preload(void) {
         "proj/marisa",
         "masterspark",
         "masterspark_ring",
+	"marisa_bombbg",
         "part/marisa_laser0",
         "part/marisa_laser1",
         "part/magic_star",
@@ -471,6 +465,7 @@ PlayerMode plrmode_marisa_a = {
     .shot_mode = PLR_SHOT_MARISA_LASER,
     .procs = {
         .bomb = marisa_laser_bomb,
+	.bombbg = marisa_laser_bombbg,
         .shot = marisa_common_shot,
         .power = marisa_laser_power,
         .speed_mod = marisa_laser_speed_mod,
