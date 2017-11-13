@@ -2,23 +2,28 @@ ver_fb = get_option('version_fallback').strip()
 version_fallback = ver_fb != '' ? ver_fb : meson.project_version()
 
 version_script = find_program('../scripts/version.py')
-version_command = [version_script, meson.source_root(), '@INPUT@', get_option('buildtype'), version_fallback]
+version_command = [version_script, meson.source_root(), '@INPUT@', '@OUTPUT@', get_option('buildtype'), version_fallback]
 version_deps = [custom_target('version file',
                               command : version_command,
                               build_always : true,
-                              capture : true,
                               input : 'version_auto.c.in',
                               output : 'version_auto.c')]
 
 if host_machine.system() == 'windows'
     winmod = import('windows')
-    rcfile = custom_target('Windows resource file',
-                           command : version_command,
-                           build_always : true,
-                           capture : true,
-                           input : 'taisei.rc.in',
-                           output : 'taisei.rc')
-    version_deps += winmod.compile_resources(rcfile)
+    # HACK: compile_resources only accepts strings, not generated dependencies.
+    # We still want to generate this every time though.
+    rcpath = join_paths(meson.current_build_dir(), 'taisei.rc')
+    c = run_command(version_script, meson.source_root(), 'taisei.rc.in', rcpath, get_option('buildtype'), version_fallback)
+    if c.returncode() != 0
+        error('Failed to generate Windows resource file:\n' + c.stderr())
+    endif
+    version_deps += custom_target('Windows resource file',
+                                  command : version_command,
+                                  build_always : true,
+                                  input : 'taisei.rc.in',
+                                  output : 'taisei.rc')
+    version_deps += winmod.compile_resources(rcpath)
 endif
 
 configure_file(configuration : config, output : 'build_config.h')
