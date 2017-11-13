@@ -42,6 +42,10 @@ dep_m = cc.find_library('m', required : false)
 
 taisei_deps = [dep_sdl2, dep_sdl2_ttf, dep_zlib, dep_png, dep_m]
 
+if host_machine.system() == 'windows'
+    taisei_deps += cc.find_library('shlwapi')
+endif
+
 dep_sdl2_mixer = dependency('SDL2_mixer', required : false, static: static)
 if dep_sdl2_mixer.found() and get_option('enable_audio') != 'false'
     taisei_deps += dep_sdl2_mixer
