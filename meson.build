@@ -32,22 +32,24 @@ foreach flag : [
     endif
 endforeach
 
-dep_sdl2 = dependency('sdl2', version : '>=2.0.5', required : true)
-dep_sdl2_ttf = dependency('SDL2_ttf', required : true)
-dep_zlib = dependency('zlib', required : true)
-dep_png = dependency('libpng', version : '>=1.5', required : true)
+static = get_option('static')
+
+dep_sdl2 = dependency('sdl2', version : '>=2.0.5', required : true, static : static)
+dep_sdl2_ttf = dependency('SDL2_ttf', required : true, static: static)
+dep_zlib = dependency('zlib', required : true, static: static)
+dep_png = dependency('libpng', version : '>=1.5', required : true, static: static)
 dep_m = cc.find_library('m', required : false)
 
 taisei_deps = [dep_sdl2, dep_sdl2_ttf, dep_zlib, dep_png, dep_m]
 
-dep_sdl2_mixer = dependency('SDL2_mixer', required : false)
+dep_sdl2_mixer = dependency('SDL2_mixer', required : false, static: static)
 if dep_sdl2_mixer.found() and get_option('enable_audio') != 'false'
     taisei_deps += dep_sdl2_mixer
 elif get_option('enable_audio') == 'true'
     error('Audio support enabled but SDL2_mixer not found')
 endif
 
-dep_zip = dependency('libzip', version : '>=1.0', required : false)
+dep_zip = dependency('libzip', version : '>=1.0', required : false, static: static)
 if dep_zip.found() and get_option('package_data') != 'false'
     taisei_deps += dep_zip
 elif get_option('package_data') == 'true'
