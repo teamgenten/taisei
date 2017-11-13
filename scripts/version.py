@@ -5,12 +5,13 @@ import sys
 from subprocess import check_output
 from collections import OrderedDict
 
-assert(len(sys.argv) == 5)
+assert(len(sys.argv) == 6)
 
 root = sys.argv[1]
 inpath = sys.argv[2]
-buildtype = sys.argv[3].strip()
-v_fallback = sys.argv[4].strip()
+outpath = sys.argv[3]
+buildtype = sys.argv[4].strip()
+v_fallback = sys.argv[5].strip()
 
 try:
     git = check_output(['git', 'describe', '--tags', '--match', 'v[0-9]*[!asz]'], cwd=root, universal_newlines=True)
@@ -34,13 +35,20 @@ elif len(vparts[0]) == 0 or not vextra.isnumeric():
     print("Error: Invalid version string '{0}'. Please use the following format: [v]major[.minor[.patch]][-tweak[-extrainfo]]".format(version_str), file=sys.stderr)
     sys.exit(1)
 
+if buildtype.lower().startswith("debug"):
+    buildtype_def = "#define DEBUG_BUILD"
+else:
+    buildtype_def = "#define RELEASE_BUILD"
+
 version = [("${TAISEI_VERSION_MAJOR}", 0),
            ("${TAISEI_VERSION_MINOR}", 0),
            ("${TAISEI_VERSION_PATCH}", 0),
            ("${TAISEI_VERSION_TWEAK}", vextra),
            ("${TAISEI_VERSION}", version_str),
            ("${TAISEI_VERSION_FULL_STR}", "Taisei v" + version_str),
-           ("${MESON_BUILD_TYPE}", buildtype)]
+           ("${MESON_BUILD_TYPE}", buildtype),
+           ("${ICONS_DIR}", os.path.join(root, "misc", "icons")),
+           ("${BUILDTYPE_DEFINE}", buildtype_def)]
 
 for p in vparts:
     c = version.pop(0)
@@ -52,4 +60,5 @@ with open(inpath, "r") as infile:
     for k, v in version:
         template = template.replace(k, str(v))
 
-    print(template)
+with open(outpath, "w") as outfile:
+    print(template, file=outfile)
