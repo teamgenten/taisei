@@ -106,9 +106,11 @@ List* proj_insert_sizeprio(List **dest, List *elem) {
 }
 
 static Projectile* _create_projectile(ProjArgs *args) {
+#ifdef PROJ_DEBUG
 	if(IN_DRAW_CODE) {
 		log_fatal("Tried to spawn a projectile while in drawing code");
 	}
+#endif
 
 	Projectile *p = calloc(1, sizeof(Projectile));
 

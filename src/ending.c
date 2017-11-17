@@ -178,6 +178,6 @@ void ending_loop(void) {
 	create_ending(&e);
 	global.frames = 0;
 	set_ortho();
-	loop_at_fps(ending_frame, NULL, &e, FPS);
+	loop_at_fps(ending_frame, fpsfunc_default, &e);
 	free_ending(&e);
 }

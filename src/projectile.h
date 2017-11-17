@@ -14,7 +14,7 @@
 #include "recolor.h"
 
 #ifdef DEBUG
-	#define PROJ_DEBUG
+	// #define PROJ_DEBUG
 #endif
 
 enum {

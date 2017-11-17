@@ -318,7 +318,7 @@ Resource* get_resource(ResourceType type, const char *name, ResourceFlags flags)
 		if(!(flags & RESF_PRELOAD)) {
 			log_warn("%s '%s' was not preloaded", resource_type_names[type], name);
 
-			if(!(flags & RESF_OPTIONAL) && getenvint("TAISEI_PRELOAD_REQUIRED", false)) {
+			if(!(flags & RESF_OPTIONAL) && getenvint("TAISEI_PRELOAD_REQUIRED", true)) {
 				log_fatal("Aborting due to TAISEI_PRELOAD_REQUIRED");
 			}
 		}

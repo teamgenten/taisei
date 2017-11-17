@@ -8,6 +8,7 @@
 
 #include "util.h"
 #include "global.h"
+#include "video.h"
 
 //
 // string utils
@@ -335,13 +336,24 @@ void fpscounter_update(FPSCounter *fps) {
     fps->last_update_time = time_get();
 }
 
-void loop_at_fps(bool (*frame_func)(void*), bool (*limiter_cond_func)(void*), void *arg, uint32_t fps) {
+static inline hrtime_t fps_to_frametime(double (*fps_func)(void*), void *arg) {
+    if(fps_func != NULL) {
+        double fps = fps_func(arg);
+
+        if(fps > 0) {
+            return ((hrtime_t)1.0) / fps;
+        }
+    }
+
+    return 0;
+}
+
+void loop_at_fps(bool (*frame_func)(void*), double (*fps_func)(void*), void *arg) {
     assert(frame_func != NULL);
-    assert(fps > 0);
 
     hrtime_t real_time = time_get();
     hrtime_t next_frame_time = real_time;
-    hrtime_t target_frame_time = ((hrtime_t)1.0) / fps;
+    hrtime_t target_frame_time;
 
     int32_t delay = getenvint("TAISEI_FRAMELIMITER_SLEEP", 0);
     bool exact_delay = getenvint("TAISEI_FRAMELIMITER_SLEEP_EXACT", 1);
@@ -353,8 +365,8 @@ void loop_at_fps(bool (*frame_func)(void*), bool (*limiter_cond_func)(void*), vo
             continue;
         }
 
-magic:
-        glClear(GL_COLOR_BUFFER_BIT);
+// magic:
+        // glClear(GL_COLOR_BUFFER_BIT);
 
         if(!frame_func(arg)) {
             return;
@@ -366,39 +378,52 @@ magic:
         }
 #endif
 
-        if(!limiter_cond_func || limiter_cond_func(arg)) {
-            next_frame_time = real_time + target_frame_time;
+        target_frame_time = fps_to_frametime(fps_func, arg);
+        next_frame_time = real_time + target_frame_time;
 
-            hrtime_t rt = time_get();
-            hrtime_t diff = rt - next_frame_time;
+/*
+        hrtime_t rt = time_get();
+        hrtime_t diff = rt - next_frame_time;
 
-            if(diff >= 0) {
-                // frame took too long...
-                // try to compensate in the next frame to avoid slowdown
-                real_time = rt - min(diff, target_frame_time);
-                goto magic;
+        if(diff >= 0) {
+            // frame took too long...
+            // try to compensate in the next frame to avoid slowdown
+            real_time = rt - min(diff, target_frame_time);
+            goto magic;
+        }
+*/
+
+        if(delay > 0) {
+            int32_t realdelay = delay;
+            int32_t mindelay = (int32_t)(1000 * (next_frame_time - time_get()));
+
+            if(realdelay > mindelay) {
+                if(exact_delay) {
+                    log_debug("Delay of %i ignored. Minimum is %i but TAISEI_FRAMELIMITER_SLEEP_EXACT is active", realdelay, mindelay);
+                    realdelay = 0;
+                } else {
+                    log_debug("Delay reduced from %i to %i", realdelay, mindelay);
+                    realdelay = mindelay;
+                }
             }
 
-            if(delay > 0) {
-                int32_t realdelay = delay;
-                int32_t mindelay = (int32_t)(1000 * (next_frame_time - time_get()));
-
-                if(realdelay > mindelay) {
-                    if(exact_delay) {
-                        log_debug("Delay of %i ignored. Minimum is %i but TAISEI_FRAMELIMITER_SLEEP_EXACT is active", realdelay, mindelay);
-                        realdelay = 0;
-                    } else {
-                        log_debug("Delay reduced from %i to %i", realdelay, mindelay);
-                        realdelay = mindelay;
-                    }
-                }
-
-                if(realdelay > 0) {
-                    SDL_Delay(realdelay);
-                }
+            if(realdelay > 0) {
+                SDL_Delay(realdelay);
             }
         }
     }
+}
+
+double fpsfunc_default(void *ignored) {
+    return FPS;
+}
+
+double fpsfunc_double_refresh_rate(void *ignored) {
+    return video.real.refresh_rate * 2;
+}
+
+double fpsfunc_unlimited(void *ignored) {
+    return 0;
 }
 
 void set_ortho_ex(float w, float h) {

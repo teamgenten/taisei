@@ -206,12 +206,30 @@ static void video_check_fullscreen_sanity(void) {
 	}
 }
 
+static double video_get_refresh_rate(void) {
+       int display;
+       SDL_DisplayMode mode;
+
+       if((display = SDL_GetWindowDisplayIndex(video.window)) < 0) {
+               log_warn("SDL_GetWindowDisplayIndex() failed: %s", SDL_GetError());
+               return FPS;
+       }
+
+       if(SDL_GetCurrentDisplayMode(display, &mode)) {
+               log_warn("SDL_GetCurrentDisplayMode() failed: %s", SDL_GetError());
+               return FPS;
+       }
+
+       return mode.refresh_rate;
+}
+
 static void video_update_mode_settings(void) {
 	SDL_ShowCursor(false);
 	video_update_vsync();
 	SDL_GL_GetDrawableSize(video.window, &video.current.width, &video.current.height);
 	video.real.width = video.current.width;
 	video.real.height = video.current.height;
+	video.real.refresh_rate = video_get_refresh_rate();
 	video_set_viewport();
 	video_update_quality();
 	events_emit(TE_VIDEO_MODE_CHANGED, 0, NULL, NULL);
@@ -514,6 +532,7 @@ static void video_init_sdl(void) {
 static void video_handle_resize(int w, int h) {
 	video.current.width = w;
 	video.current.height = h;
+	video.current.refresh_rate = video_get_refresh_rate();
 	video_set_viewport();
 	video_update_quality();
 	events_emit(TE_VIDEO_MODE_CHANGED, 0, NULL, NULL);

@@ -21,6 +21,7 @@
 typedef struct VideoMode {
 	int width;
 	int height;
+    double refresh_rate;
 } VideoMode;
 
 typedef struct {

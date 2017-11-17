@@ -272,6 +272,6 @@ static bool credits_frame(void *arg) {
 void credits_loop(void) {
 	credits_preload();
 	credits_init();
-	loop_at_fps(credits_frame, NULL, NULL, FPS);
+	loop_at_fps(credits_frame, fpsfunc_default, NULL);
 	credits_free();
 }

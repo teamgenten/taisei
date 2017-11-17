@@ -18,7 +18,7 @@
 #undef create_enemy_p
 #endif
 
-#ifdef DEBUG
+#ifdef ENEMY_DEBUG
 Enemy* _enemy_attach_dbginfo(Enemy *e, DebugInfo *dbg) {
 	memcpy(&e->debug, dbg, sizeof(DebugInfo));
 	set_debug_info(dbg);
@@ -28,9 +28,12 @@ Enemy* _enemy_attach_dbginfo(Enemy *e, DebugInfo *dbg) {
 
 Enemy *create_enemy_p(Enemy **enemies, complex pos, int hp, EnemyVisualRule visual_rule, EnemyLogicRule logic_rule,
 				  complex a1, complex a2, complex a3, complex a4) {
+
+#ifdef ENEMY_DEBUG
 	if(IN_DRAW_CODE) {
 		log_fatal("Tried to spawn an enemy while in drawing code");
 	}
+#endif
 
 	// XXX: some code relies on the insertion logic
 	Enemy *e = (Enemy*)list_insert((List**)enemies, malloc(sizeof(Enemy)));

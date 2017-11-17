@@ -173,7 +173,7 @@ int menu_loop(MenuData *menu) {
 	}
 
 	assert(menu->logic != NULL);
-	loop_at_fps(menu_frame, NULL, menu, FPS);
+	loop_at_fps(menu_frame, fpsfunc_default, menu);
 
 	if(menu->end) {
 		menu->end(menu);

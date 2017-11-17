@@ -204,8 +204,12 @@ static bool ingame_menu_interrupts_bgm(void) {
 	return global.stage->type != STAGE_SPELL;
 }
 
-void stage_pause(void) {
+static bool gameover_requested;
+static bool game_paused;
+
+static void stage_pause(void) {
 	MenuData menu;
+	game_paused = true;
 
 	if(global.replaymode == REPLAY_PLAY) {
 		create_ingame_menu_replay(&menu);
@@ -230,9 +234,15 @@ void stage_pause(void) {
 		resume_sounds();
 		resume_bgm();
 	}
+
+	game_paused = false;
 }
 
 void stage_gameover(void) {
+	gameover_requested = true;
+}
+
+static void stage_gameover_real(void) {
 	if(global.stage->type == STAGE_SPELL && config_get_int(CONFIG_SPELLSTAGE_AUTORESTART)) {
 		global.game_over = GAMEOVER_RESTART;
 		return;
@@ -274,7 +284,7 @@ void stage_gameover(void) {
 	resume_bgm();
 }
 
-bool stage_input_handler_gameplay(SDL_Event *event, void *arg) {
+static bool stage_input_handler_gameplay(SDL_Event *event, void *arg) {
 	TaiseiEvent type = TAISEI_EVENT(event->type);
 	int32_t code = event->user.code;
 
@@ -319,7 +329,7 @@ bool stage_input_handler_gameplay(SDL_Event *event, void *arg) {
 	return false;
 }
 
-bool stage_input_handler_replay(SDL_Event *event, void *arg) {
+static bool stage_input_handler_replay(SDL_Event *event, void *arg) {
 	if(event->type == MAKE_TAISEI_EVENT(TE_GAME_PAUSE)) {
 		stage_pause();
 	}
@@ -327,14 +337,9 @@ bool stage_input_handler_replay(SDL_Event *event, void *arg) {
 	return false;
 }
 
-void replay_input(void) {
+static void replay_events(void) {
 	ReplayStage *s = global.replay_stage;
 	int i;
-
-	events_poll((EventHandler[]){
-		{ .proc = stage_input_handler_replay },
-		{NULL}
-	}, EFLAG_GAME);
 
 	for(i = s->playpos; i < s->numevents; ++i) {
 		ReplayEvent *e = s->events + i;
@@ -363,19 +368,25 @@ void replay_input(void) {
 	}
 
 	s->playpos = i;
-	player_applymovement(&global.plr);
 }
 
-void stage_input(void) {
+static void replay_input(void) {
+	events_poll((EventHandler[]){
+		{ .proc = stage_input_handler_replay },
+		{NULL}
+	}, EFLAG_GAME);
+}
+
+static void stage_input(void) {
 	events_poll((EventHandler[]){
 		{ .proc = stage_input_handler_gameplay },
 		{NULL}
 	}, EFLAG_GAME);
 	player_fix_input(&global.plr);
-	player_applymovement(&global.plr);
 }
 
 static void stage_logic(void) {
+	player_applymovement(&global.plr);
 	player_logic(&global.plr);
 
 	process_enemies(&global.enemies);
@@ -524,17 +535,49 @@ typedef struct StageFrameState {
 	StageInfo *stage;
 	int transition_delay;
 	uint16_t last_replay_fps;
+	SDL_mutex *mutex;
 } StageFrameState;
 
-static bool stage_fpslimit_condition(void *arg) {
+static bool stage_fpslimit_predicate(void *arg) {
 	return (global.replaymode != REPLAY_PLAY || !gamekeypressed(KEY_SKIP)) && !global.frameskip;
 }
 
-static bool stage_frame(void *arg) {
+static double stage_logic_fpsfunc(void *arg) {
+	if(stage_fpslimit_predicate(arg)) {
+		return fpsfunc_default(arg);
+	}
+
+	return fpsfunc_unlimited(arg);
+}
+
+static double stage_render_fpsfunc(void *arg) {
+	if(stage_fpslimit_predicate(arg)) {
+		return fpsfunc_double_refresh_rate(arg);
+		// return fpsfunc_default(arg) / 2;
+	}
+
+	return fpsfunc_unlimited(arg);
+}
+
+static bool stage_logic_frame(void *arg) {
 	StageFrameState *fstate = arg;
 	StageInfo *stage = fstate->stage;
 
-	((global.replaymode == REPLAY_PLAY) ? replay_input : stage_input)();
+	if(global.game_over > 0) {
+		return false;
+	}
+
+	while(gameover_requested || game_paused) {
+		return true;
+	}
+
+	SDL_LockMutex(fstate->mutex);
+
+	if(global.replaymode == REPLAY_PLAY) {
+		replay_events();
+	}
+
+	replay_stage_check_desync(global.replay_stage, global.frames, (tsrand() ^ global.plr.points) & 0xFFFF, global.replaymode);
 
 	if(global.game_over != GAMEOVER_TRANSITIONING) {
 		if((!global.boss || boss_is_fleeing(global.boss)) && !global.dialog) {
@@ -554,8 +597,9 @@ static bool stage_frame(void *arg) {
 		display_stage_title(stage);
 	}
 
-	replay_stage_check_desync(global.replay_stage, global.frames, (tsrand() ^ global.plr.points) & 0xFFFF, global.replaymode);
 	stage_logic();
+	update_transition_ex(TRANS_UPDATE_FADE);
+	SDL_UnlockMutex(fstate->mutex);
 
 	if(global.replaymode == REPLAY_RECORD && global.plr.points > progress.hiscore) {
 		progress.hiscore = global.plr.points;
@@ -565,23 +609,41 @@ static bool stage_frame(void *arg) {
 		--fstate->transition_delay;
 	}
 
-	if(global.frameskip && global.frames % global.frameskip) {
-		if(!fstate->transition_delay) {
-			update_transition();
-		}
-
-		return true;
-	}
-
-	fpscounter_update(&global.fps);
+	fpscounter_update(&global.game_fps);
 
 	if(global.replaymode == REPLAY_RECORD) {
-		uint16_t replay_fps = (uint16_t)rint(global.fps.fps);
+		uint16_t replay_fps = (uint16_t)rint(global.game_fps.fps);
 
 		if(replay_fps != fstate->last_replay_fps) {
 			replay_stage_event(global.replay_stage, global.frames, EV_FPS, replay_fps);
 			fstate->last_replay_fps = replay_fps;
 		}
+	}
+
+	return global.game_over <= 0;
+}
+
+static bool stage_frame(void *arg) {
+	StageFrameState *fstate = arg;
+	StageInfo *stage = fstate->stage;
+
+	if(gameover_requested) {
+		stage_gameover_real();
+		gameover_requested = false;
+	}
+
+	SDL_LockMutex(fstate->mutex);
+
+	((global.replaymode == REPLAY_PLAY) ? replay_input : stage_input)();
+
+	// stage_logic_frame(arg);
+
+	if(global.frameskip && global.frames % global.frameskip) {
+		if(!fstate->transition_delay) {
+			update_transition_ex(TRANS_UPDATE_PROGRESS);
+		}
+
+		return true;
 	}
 
 	tsrand_lock(&global.rand_game);
@@ -592,15 +654,23 @@ static bool stage_frame(void *arg) {
 	tsrand_unlock(&global.rand_game);
 	tsrand_switch(&global.rand_game);
 
+	SDL_UnlockMutex(fstate->mutex);
+
 	draw_transition();
 
 	if(!fstate->transition_delay) {
-		update_transition();
+		update_transition_ex(TRANS_UPDATE_PROGRESS);
 	}
 
+	fpscounter_update(&global.render_fps);
 	SDL_GL_SwapWindow(video.window);
 
 	return global.game_over <= 0;
+}
+
+int stage_logic_thread(void *arg) {
+	loop_at_fps(stage_logic_frame, stage_logic_fpsfunc, arg);
+	return 0;
 }
 
 void stage_loop(StageInfo *stage) {
@@ -678,8 +748,24 @@ void stage_loop(StageInfo *stage) {
 	stage->procs->begin();
 
 	StageFrameState fstate = { .stage = stage };
-	fpscounter_reset(&global.fps);
-	loop_at_fps(stage_frame, stage_fpslimit_condition, &fstate, FPS);
+	fstate.mutex = SDL_CreateMutex();
+
+	if(!fstate.mutex) {
+		log_fatal("SDL_CreateMutex() failed: %s", SDL_GetError());
+	}
+
+	fpscounter_reset(&global.game_fps);
+	fpscounter_reset(&global.render_fps);
+
+	SDL_Thread *thread = SDL_CreateThread(stage_logic_thread, "stage_logic_thread", &fstate);
+
+	if(!thread) {
+		log_fatal("SDL_CreateThread() failed: %s", SDL_GetError());
+	}
+
+	loop_at_fps(stage_frame, stage_render_fpsfunc, &fstate);
+	SDL_WaitThread(thread, NULL);
+	SDL_DestroyMutex(fstate.mutex);
 
 	if(global.replaymode == REPLAY_RECORD) {
 		replay_stage_event(global.replay_stage, global.frames, EV_OVER, 0);

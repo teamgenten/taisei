@@ -536,9 +536,9 @@ void stage_draw_hud_text(struct labels_s* labels) {
 	glPopMatrix();
 
 #ifdef DEBUG
-	snprintf(buf, sizeof(buf), "%.2f fps, timer: %d, frames: %d", global.fps.fps, global.timer, global.frames);
+	snprintf(buf, sizeof(buf), "%.2f gfps, %.2f rfps, timer: %d, frames: %d", global.game_fps.fps, global.render_fps.fps, global.timer, global.frames);
 #else
-	snprintf(buf, sizeof(buf), "%.2f fps", global.fps.fps);
+	snprintf(buf, sizeof(buf), "%.2f fps", global.game_fps.fps);
 #endif
 
 	draw_text(AL_Right, SCREEN_W, rint(SCREEN_H - 0.5 * stringheight(buf, _fonts.monosmall)), buf, _fonts.monosmall);

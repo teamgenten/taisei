@@ -25,6 +25,8 @@ struct Transition {
         TRANS_IDLE,
         TRANS_FADE_IN,
         TRANS_FADE_OUT,
+        TRANS_FADED_IN,
+        TRANS_FADED_OUT,
     } state;
 
 	TransitionRule rule;
@@ -39,6 +41,11 @@ struct Transition {
     } queued;
 };
 
+typedef enum TransUpdateMode {
+    TRANS_UPDATE_FADE = (1 << 0),
+    TRANS_UPDATE_PROGRESS = (1 << 1),
+} TransUpdateMode;
+
 extern Transition transition;
 
 void TransFadeBlack(double fade);
@@ -52,4 +59,5 @@ void set_transition(TransitionRule rule, int dur1, int dur2);
 void set_transition_callback(TransitionRule rule, int dur1, int dur2, TransitionCallback cb, void *arg);
 void draw_transition(void);
 void update_transition(void);
+void update_transition_ex(TransUpdateMode mode);
 void draw_and_update_transition(void);

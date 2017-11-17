@@ -132,27 +132,59 @@ void draw_transition(void) {
 	}
 }
 
-void update_transition(void) {
+void update_transition_ex(TransUpdateMode mode) {
 	if(!check_transition()) {
 		return;
 	}
 
-	if(transition.state == TRANS_FADE_IN) {
-		transition.fade = approach(transition.fade, 1.0, 1.0/transition.dur1);
-		if(transition.fade == 1.0) {
+	if(transition.state == TRANS_FADED_IN) {
+		if(mode & TRANS_UPDATE_PROGRESS) {
 			transition.state = TRANS_FADE_OUT;
 			call_callback();
 			if(popq()) {
 				call_callback();
 			}
 		}
-	} else if(transition.state == TRANS_FADE_OUT) {
-		transition.fade = transition.dur2 ? approach(transition.fade, 0.0, 1.0/transition.dur2) : 0.0;
-		if(transition.fade == 0.0) {
+
+		return;
+	}
+
+	if(transition.state == TRANS_FADED_OUT) {
+		if(mode & TRANS_UPDATE_PROGRESS) {
 			transition.state = TRANS_IDLE;
 			popq();
 		}
+
+		return;
 	}
+
+	if(!(mode & TRANS_UPDATE_FADE)) {
+		return;
+	}
+
+	if(transition.state == TRANS_FADE_IN) {
+		transition.fade = approach(transition.fade, 1.0, 1.0/transition.dur1);
+		if(transition.fade == 1.0) {
+			transition.state = TRANS_FADED_IN;
+
+			if(mode & TRANS_UPDATE_PROGRESS) {
+				update_transition_ex(mode);
+			}
+		}
+	} else if(transition.state == TRANS_FADE_OUT) {
+		transition.fade = transition.dur2 ? approach(transition.fade, 0.0, 1.0/transition.dur2) : 0.0;
+		if(transition.fade == 0.0) {
+			transition.state = TRANS_FADED_OUT;
+
+			if(mode & TRANS_UPDATE_PROGRESS) {
+				update_transition_ex(mode);
+			}
+		}
+	}
+}
+
+void update_transition(void) {
+	update_transition_ex(TRANS_UPDATE_FADE | TRANS_UPDATE_PROGRESS);
 }
 
 void draw_and_update_transition(void) {

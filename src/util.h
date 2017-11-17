@@ -104,9 +104,14 @@ typedef struct {
     hrtime_t last_update_time; // internal; last time the average was recalculated
 } FPSCounter;
 
-void loop_at_fps(bool (*frame_func)(void*), bool (*limiter_cond_func)(void*), void *arg, uint32_t fps);
+void loop_at_fps(bool (*frame_func)(void*), double (*fps_func)(void*), void *arg);
 void fpscounter_reset(FPSCounter *fps);
 void fpscounter_update(FPSCounter *fps);
+
+double fpsfunc_default(void *ignored);
+double fpsfunc_double_refresh_rate(void *ignored);
+double fpsfunc_unlimited(void *ignored);
+
 void set_ortho(void);
 void set_ortho_ex(float w, float h);
 void colorfill(float r, float g, float b, float a);

@@ -242,7 +242,7 @@ static int youmu_particle_slice_logic(Projectile *p, int t) {
 	    a = max(0,1-(tt-0.5)/0.5);
     }
     p->color = rgba(1, 1, 1,a);
-    
+
     complex phase = cexp(p->angle*I);
     if(t%5 == 0) {
     	tsrand_fill(4);

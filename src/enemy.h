@@ -12,7 +12,7 @@
 #include "projectile.h"
 
 #ifdef DEBUG
-	#define ENEMY_DEBUG
+	// #define ENEMY_DEBUG
 #endif
 
 typedef struct Enemy Enemy;
