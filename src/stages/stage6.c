@@ -216,7 +216,12 @@ void stage6_start(void) {
 			y = nfrand();
 			z = frand();
 			r = sqrt(x*x+y*y+z*z);
-		} while(0 < r < 1);
+
+		// XXX: I know this is wrong, but we can't fix it properly in v1.1.x without breaking replays.
+		//      The parentheses are there to shut up the warning and rpmlint.
+		//      This is properly fixed in master.
+		} while((0 < r) < 1);
+
 		starpos[3*i+0]= x/r;
 		starpos[3*i+1]= y/r;
 		starpos[3*i+2]= z/r;
