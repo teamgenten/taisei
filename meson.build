@@ -123,13 +123,13 @@ else
 endif
 
 if config.get('TAISEI_BUILDCONF_RELATIVE_DATA_PATH')
+    data_path = 'data'
+    doc_path = '.'
+
     if macos_app_bundle
         # This is relative to SDL_GetBasePath(), which will return '/path/to/Taisei.app/Contents/Resources' for a macOS bundle.
-        data_path = join_paths(datadir, 'data')
-        config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', datadir)
+        config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', 'data')
     else
-        data_path = 'data'
-
         # HACK
         rel_dpath = []
         foreach p : get_option('bindir').split('/')
@@ -141,7 +141,6 @@ if config.get('TAISEI_BUILDCONF_RELATIVE_DATA_PATH')
 
         config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', format(join_paths(rel_dpath)))
     endif
-    doc_path = '.'
 else
     data_path = join_paths(datadir, 'taisei')
     config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', join_paths(get_option('prefix'), data_path))

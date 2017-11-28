@@ -60,7 +60,7 @@ def fix_libs(opath):
             src_lib_path = Path(lib)
             dst_lib_path = dylib_dir_path / src_lib_path.name
 
-            install_name_tool(path, '-change', lib, '@loader_path/dylibs/{0}'.format(dst_lib_path.name))
+            install_name_tool(path, '-change', lib, '@executable_path/dylibs/{0}'.format(dst_lib_path.name))
 
             if dst_lib_path in handled:
                 continue
