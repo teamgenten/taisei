@@ -128,7 +128,10 @@ if config.get('TAISEI_BUILDCONF_RELATIVE_DATA_PATH')
 
     if macos_app_bundle
         # This is relative to SDL_GetBasePath(), which will return '/path/to/Taisei.app/Contents/Resources' for a macOS bundle.
-        config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', 'data')
+        config.set_quoted('TAISEI_BUILDCONF_DATA_PATH', data_path)
+
+        # Actual installation path
+        data_path = join_paths(datadir, data_path)
     else
         # HACK
         rel_dpath = []
