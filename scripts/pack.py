@@ -19,5 +19,5 @@ with ZipFile(archive, "w", ZIP_DEFLATED) as zf:
                 zf.write(abspath, rel)
 
     with open(depfile, "w") as df:
-        l = [archive + ": \\"] + [os.path.join(sourcedir, x) for x in zf.namelist()]
-        print("\n ".join(l), file=df)
+        l = [archive + ":"] + [os.path.join(sourcedir, x) for x in zf.namelist()]
+        df.write(" \\\n ".join(l))
