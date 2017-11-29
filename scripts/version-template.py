@@ -35,5 +35,16 @@ with open(inpath, "r") as infile:
     for k, v in version:
         template = template.replace(k, str(v))
 
-with open(outpath, "w") as outfile:
-    print(template, file=outfile)
+try:
+    with open(outpath, "r+t") as outfile:
+        contents = outfile.read()
+
+        if contents == template:
+            exit(0)
+
+        outfile.seek(0)
+        outfile.write(template)
+        outfile.truncate()
+except FileNotFoundError:
+    with open(outpath, "w") as outfile:
+        outfile.write(template)
