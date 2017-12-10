@@ -291,12 +291,12 @@ static void masterspark_visual(Enemy *e, int t2, bool render) {
 
     if(t < 1./6) {
         fade = t*6;
-	fade = sqrt(fade);
+    fade = sqrt(fade);
     }
 
     if(t > 3./4) {
         fade = 1-t*4 + 3;
-	fade *= fade;
+    fade *= fade;
     }
 
     glPushMatrix();
@@ -307,74 +307,74 @@ static void masterspark_visual(Enemy *e, int t2, bool render) {
 }
 
 static int masterspark_star(Projectile *p, int t) {
-	p->args[1] += 0.1*p->args[1]/cabs(p->args[1]);
-	return timeout_linear(p,t);
+    p->args[1] += 0.1*p->args[1]/cabs(p->args[1]);
+    return timeout_linear(p,t);
 }
 
 static int masterspark(Enemy *e, int t2) {
-	if(t2 == EVENT_BIRTH) {
-		global.shake_view = 8;
-		return 1;
-	}
+    if(t2 == EVENT_BIRTH) {
+    global.shake_view = 8;
+    return 1;
+    }
 
-	float t = player_get_bomb_progress(&global.plr, NULL);
-	if(t2%2==0 && t < 3./4) {
-		complex dir = -cexp(1.2*I*nfrand())*I;
-		Color c = rgb(0.7+0.3*sin(t*30),0.7+0.3*cos(t*30),0.7+0.3*cos(t*3));
-		PARTICLE(
-			.texture="maristar_orbit",
-			.pos=global.plr.pos+40*dir,
-			.color=c,
-			.rule=masterspark_star,
-			.args={50, 10*dir-10*I,3},
-			.angle=nfrand(),
-			.flags=PFLAG_DRAWADD,
-			.draw_rule=GrowFade
-		);
-		dir = -conj(dir);
-		PARTICLE(
-			.texture="maristar_orbit",
-			.pos=global.plr.pos+40*dir,
-			.color=c,
-			.rule=masterspark_star,
-			.args={50, 10*dir-10*I,3},
-			.angle=nfrand(),
-			.flags=PFLAG_DRAWADD,
-			.draw_rule=GrowFade
-		);
-		PARTICLE(
-			.texture="smoke",
-			.pos=global.plr.pos-40*I,
-			.color=rgb(0.9,1,1),
-			.rule=timeout_linear,
-			.args={50, -5*dir,3},
-			.angle=nfrand(),
-			.flags=PFLAG_DRAWADD,
-			.draw_rule=GrowFade
-		);
-	}
+    float t = player_get_bomb_progress(&global.plr, NULL);
+    if(t2%2==0 && t < 3./4) {
+    complex dir = -cexp(1.2*I*nfrand())*I;
+    Color c = rgb(0.7+0.3*sin(t*30),0.7+0.3*cos(t*30),0.7+0.3*cos(t*3));
+    PARTICLE(
+    .texture="maristar_orbit",
+    .pos=global.plr.pos+40*dir,
+    .color=c,
+    .rule=masterspark_star,
+    .args={50, 10*dir-10*I,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
+    dir = -conj(dir);
+    PARTICLE(
+    .texture="maristar_orbit",
+    .pos=global.plr.pos+40*dir,
+    .color=c,
+    .rule=masterspark_star,
+    .args={50, 10*dir-10*I,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
+    PARTICLE(
+    .texture="smoke",
+    .pos=global.plr.pos-40*I,
+    .color=rgb(0.9,1,1),
+    .rule=timeout_linear,
+    .args={50, -5*dir,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
+    }
 
-	if(t >= 1 || global.frames - global.plr.recovery >= 0) {
-		global.shake_view = 0;
-		return ACTION_DESTROY;
-	}
+    if(t >= 1 || global.frames - global.plr.recovery >= 0) {
+    global.shake_view = 0;
+    return ACTION_DESTROY;
+    }
 
-	return 1;
+    return 1;
 }
 
 static void marisa_laser_bombbg(Player *plr) {
-	float t = player_get_bomb_progress(&global.plr, NULL);
-	float fade = 1;
+    float t = player_get_bomb_progress(&global.plr, NULL);
+    float fade = 1;
 
-	if(t < 1./6)
-		fade = t*6;
+    if(t < 1./6)
+    fade = t*6;
 
-	if(t > 3./4)
-		fade = 1-t*4 + 3;
+    if(t > 3./4)
+    fade = 1-t*4 + 3;
 
-	glColor4f(1,1,1,0.8*fade);
-	fill_screen(sin(t*0.3),t*3*(1+t*3),1,"marisa_bombbg");
-	glColor4f(1,1,1,1);
+    glColor4f(1,1,1,0.8*fade);
+    fill_screen(sin(t*0.3),t*3*(1+t*3),1,"marisa_bombbg");
+    glColor4f(1,1,1,1);
 }
 
 static void marisa_laser_bomb(Player *plr) {
@@ -476,8 +476,8 @@ static void marisa_laser_preload(void) {
         // "part/marilaser_part0",
         // "proj/marilaser",
         "proj/marisa",
-	"marisa_bombbg",
-	"part/maristar_orbit",
+        "marisa_bombbg",
+        "part/maristar_orbit",
         "part/marisa_laser0",
         "part/marisa_laser1",
         "part/magic_star",
@@ -485,7 +485,7 @@ static void marisa_laser_preload(void) {
 
     preload_resources(RES_SHADER, flags,
         "marisa_laser",
-	"masterspark",
+        "masterspark",
     NULL);
 
     preload_resources(RES_SFX, flags | RESF_OPTIONAL,
@@ -499,7 +499,7 @@ PlayerMode plrmode_marisa_a = {
     .shot_mode = PLR_SHOT_MARISA_LASER,
     .procs = {
         .bomb = marisa_laser_bomb,
-	.bombbg = marisa_laser_bombbg,
+    .bombbg = marisa_laser_bombbg,
         .shot = marisa_laser_shot,
         .power = marisa_laser_power,
         .speed_mod = marisa_laser_speed_mod,

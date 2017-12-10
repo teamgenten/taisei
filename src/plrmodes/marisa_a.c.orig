@@ -281,70 +281,100 @@ static int marisa_laser_slave(Enemy *e, int t) {
     return 1;
 }
 
-static void masterspark_visual(Enemy *e, int t, bool render) {
+static void masterspark_visual(Enemy *e, int t2, bool render) {
     if(!render) {
         return;
     }
 
-    t = player_get_bomb_progress(&global.plr, NULL) * (e->args[0] / BOMB_RECOVERY);
+    float t = player_get_bomb_progress(&global.plr, NULL);
     float fade = 1;
 
-    if(t < creal(e->args[0]/6)) {
-        fade = t/e->args[0]*6;
-	fade = sqrt(fade);
+    if(t < 1./6) {
+        fade = t*6;
+    fade = sqrt(fade);
     }
 
-    if(t > creal(e->args[0])/4*3) {
-        fade = 1-t/e->args[0]*4 + 3;
-	fade *= fade;
+    if(t > 3./4) {
+        fade = 1-t*4 + 3;
+    fade *= fade;
     }
 
-    Shader *mshader = get_shader("masterspark");
-    glUseProgram(mshader->prog);
-    glUniform1f(uniloc(mshader,"t"),t);
     glPushMatrix();
     glTranslatef(creal(global.plr.pos),cimag(global.plr.pos)-40-VIEWPORT_H/2,0);
     glScalef(fade*400,VIEWPORT_H,1);
-    draw_quad();
+    marisa_common_masterspark_draw(t*BOMB_RECOVERY);
     glPopMatrix();
-    glUseProgram(0);
 }
 
-static int masterspark(Enemy *e, int t) {
-    if(t == EVENT_BIRTH) {
-        global.shake_view = 8;
-        return 1;
+static int masterspark_star(Projectile *p, int t) {
+    p->args[1] += 0.1*p->args[1]/cabs(p->args[1]);
+    return timeout_linear(p,t);
+}
+
+static int masterspark(Enemy *e, int t2) {
+    if(t2 == EVENT_BIRTH) {
+    global.shake_view = 8;
+    return 1;
     }
 
-    t = player_get_bomb_progress(&global.plr, NULL);
-    if(t%2==0 && t < BOMB_RECOVERY*3/4) {
-	    complex dir = -cexp(M_PI*I*frand());
-	    Color c = rgb(0.7+0.3*sin(t*0.1),0.7+0.3*cos(t*0.1),0.7+0.3*cos(t*0.01));
-	    PARTICLE("maristar_orbit",global.plr.pos+40*dir,c,timeout_linear,{50, 10*dir-10*I,3},nfrand(),PFLAG_DRAWADD,GrowFade);
-	    PARTICLE("smoke",global.plr.pos-40*I,rgb(0.9,1,1),timeout_linear,{50, -5*dir,3},nfrand(),PFLAG_DRAWADD,GrowFade);
+    float t = player_get_bomb_progress(&global.plr, NULL);
+    if(t2%2==0 && t < 3./4) {
+    complex dir = -cexp(1.2*I*nfrand())*I;
+    Color c = rgb(0.7+0.3*sin(t*30),0.7+0.3*cos(t*30),0.7+0.3*cos(t*3));
+    PARTICLE(
+    .texture="maristar_orbit",
+    .pos=global.plr.pos+40*dir,
+    .color=c,
+    .rule=masterspark_star,
+    .args={50, 10*dir-10*I,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
+    dir = -conj(dir);
+    PARTICLE(
+    .texture="maristar_orbit",
+    .pos=global.plr.pos+40*dir,
+    .color=c,
+    .rule=masterspark_star,
+    .args={50, 10*dir-10*I,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
+    PARTICLE(
+    .texture="smoke",
+    .pos=global.plr.pos-40*I,
+    .color=rgb(0.9,1,1),
+    .rule=timeout_linear,
+    .args={50, -5*dir,3},
+    .angle=nfrand(),
+    .flags=PFLAG_DRAWADD,
+    .draw_rule=GrowFade
+    );
     }
 
-    if(t >= BOMB_RECOVERY || global.frames - global.plr.recovery > 0) {
-        global.shake_view = 0;
-        return ACTION_DESTROY;
+    if(t >= 1 || global.frames - global.plr.recovery >= 0) {
+    global.shake_view = 0;
+    return ACTION_DESTROY;
     }
 
     return 1;
 }
 
 static void marisa_laser_bombbg(Player *plr) {
-	float t = player_get_bomb_progress(&global.plr, NULL);
-	float fade = 1;
+    float t = player_get_bomb_progress(&global.plr, NULL);
+    float fade = 1;
 
-	if(t < BOMB_RECOVERY/6)
-		fade = t/BOMB_RECOVERY*6;
+    if(t < 1./6)
+    fade = t*6;
 
-	if(t > BOMB_RECOVERY/4*3)
-		fade = 1-t/BOMB_RECOVERY*4 + 3;
+    if(t > 3./4)
+    fade = 1-t*4 + 3;
 
-	glColor4f(1,1,1,0.8*fade);
-	fill_screen(sin(t*0.001),t*0.01*(1+t*0.01),1,"marisa_bombbg");
-	glColor4f(1,1,1,1);
+    glColor4f(1,1,1,0.8*fade);
+    fill_screen(sin(t*0.3),t*3*(1+t*3),1,"marisa_bombbg");
+    glColor4f(1,1,1,1);
 }
 
 static void marisa_laser_bomb(Player *plr) {
@@ -446,9 +476,8 @@ static void marisa_laser_preload(void) {
         // "part/marilaser_part0",
         // "proj/marilaser",
         "proj/marisa",
-        "masterspark",
-        "masterspark_ring",
-	"marisa_bombbg",
+        "marisa_bombbg",
+        "part/maristar_orbit",
         "part/marisa_laser0",
         "part/marisa_laser1",
         "part/magic_star",
@@ -456,6 +485,7 @@ static void marisa_laser_preload(void) {
 
     preload_resources(RES_SHADER, flags,
         "marisa_laser",
+        "masterspark",
     NULL);
 
     preload_resources(RES_SFX, flags | RESF_OPTIONAL,
@@ -470,11 +500,12 @@ PlayerMode plrmode_marisa_a = {
     .procs = {
         .bomb = marisa_laser_bomb,
 <<<<<<< HEAD
+	.bombbg = marisa_laser_bombbg,
         .shot = marisa_laser_shot,
 =======
-	.bombbg = marisa_laser_bombbg,
+    .bombbg = marisa_laser_bombbg,
         .shot = marisa_common_shot,
->>>>>>> redo masterspark
+>>>>>>> trying to make the tabs more like plrmodesagain
         .power = marisa_laser_power,
         .speed_mod = marisa_laser_speed_mod,
         .preload = marisa_laser_preload,
